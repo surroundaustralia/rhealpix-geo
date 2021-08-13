@@ -5,10 +5,11 @@ This provides a convenient low level API to work with Cells and CellCollections.
   
 Validation is provided for Cell and CellCollections.
 CellCollections have the following operations performed on instantiation: 
-        - compression (where all children of a parent are present, replace with their parent)
-        - deduplication (removal of repeated cells)
-        - absorb (where a child and its parent are present, remove the child/children)
-        - ordering (alphabetical and numerical based on suids)
+- compression (where all children of a parent are present, replace with their parent)  
+- deduplication (removal of repeated cells)  
+- absorb (where a child and its parent are present, remove the child/children)  
+- ordering (alphabetical and numerical based on suids)  
+
 These operations provide a consistent representation of collections of Cells, allowing higher level operations to work with a simplified, valid, and consistent set of cells. 
 
 Cells and CellCollections have the following attributes or methods:

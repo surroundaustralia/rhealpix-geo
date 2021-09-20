@@ -4,6 +4,7 @@ Beware, these tests cover only some functions and only some scenarios.
 Keep adding tests!
 CHANGELOG:
 - 2021-07-19:   David Habgood (DH): Initial version
+- 2021-09-20:   DH: converted to pytest
 """
 import pytest
 from rheal import *

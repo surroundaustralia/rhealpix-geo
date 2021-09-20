@@ -174,7 +174,3 @@ def test_collection_not_matches():
 
 def test_collection_not_matches_():
     assert CellCollection() + CellCollection("R1") == CellCollection("R1")
-
-
-if __name__ == "__main__":
-    test_cell_cell_Subtraction()

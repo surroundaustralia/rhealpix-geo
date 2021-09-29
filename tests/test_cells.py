@@ -21,7 +21,7 @@ def test_dggs_geom_format_invalid_2():
 
 
 def test_dggs_geom_single_cell():
-    assert Cell("P012").suid == ("P", 0, 1, 2)
+    assert Cell("P012").suids == ("P", 0, 1, 2)
 
 
 # neighbours

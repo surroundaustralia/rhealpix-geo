@@ -7,7 +7,7 @@ parametrisations = {
 }
 
 
-class CellCollection:
+class CellCollection(object):
     """
     DGGS Cell Collection class.
     A collection of Cell instances.
@@ -28,7 +28,7 @@ class CellCollection:
             self.standardise_input()
             self.crs = crs if crs else self.cells[0].crs
             self.kind = kind if kind else self.cells[0].kind
-            self.cell_suids = [cell.suid for cell in self.cells]
+            self.suids = [cell.suids for cell in self.cells]
             self.validate()
 
             # standardise the cells
@@ -39,7 +39,7 @@ class CellCollection:
             self.order()
 
             # regenerate the cells as they may have changed during compression through to ordering
-            self.cells = [Cell(suid) for suid in self.cell_suids]
+            self.cells = [Cell(suid) for suid in self.suids]
 
             # set additional attributes
             self.max_resolution = max([cell.resolution for cell in self.cells])
@@ -56,13 +56,13 @@ class CellCollection:
             self.crs = (
                 self.kind
             ) = self.max_resolution = self.min_resolution = self.wkt = None
-            self.cell_suids = []
+            self.suids = []
             return True
         return False
 
     def __repr__(self):
-        if self.cell_suids:
-            return " ".join(self.cell_suids)
+        if self.suids:
+            return " ".join(self.suids)
         else:
             return "Empty CellCollection"
 
@@ -71,7 +71,7 @@ class CellCollection:
             other
         )  # TODO pull out as general method - applies to both Cells and CellCollections
         other = validate_other(other)
-        new_suids = list(set(self.cell_suids).union(set(other.cell_suids)))
+        new_suids = list(set(self.suids).union(set(other.suids)))
         return CellCollection(new_suids)
 
     def __eq__(self, other):
@@ -87,12 +87,12 @@ class CellCollection:
                 for cell_two in cells_two:
                     if cell_one.overlaps(cell_two):
                         if cell_one.resolution >= cell_two.resolution:
-                            cells_to_remove.append(cell_one.suid)
+                            cells_to_remove.append(cell_one.suids)
                         elif cell_one.resolution < cell_two.resolution:
                             children = cell_one.children().cells
                             progressively_intersect(children, [cell_two])
                     else:
-                        cells_to_retain.append(cell_one.suid)
+                        cells_to_retain.append(cell_one.suids)
 
         other = validate_other(other)
         progressively_intersect(self.cells, other.cells)
@@ -104,7 +104,7 @@ class CellCollection:
         Defined as the number of cells in the collection.
         :return: The length of a cell collection
         """
-        return len(self.cell_suids)
+        return len(self.suids)
 
     def wkt(self):
         return f"CELLLIST (({self.__str__()}))"
@@ -180,16 +180,16 @@ class CellCollection:
 
     def deduplicate(self):
         # remove repeated instances of the same cell
-        self.cell_suids = list(set(self.cell_suids))
+        self.suids = list(set(self.suids))
 
     def absorb(self):
         # absorb child cells in to parent cells (where the parent cell exists)
         # e.g. P1 P12 is equivalent to P1, so remove P12 if present
-        for suid in self.cell_suids:
+        for suid in self.suids:
             for i in range(len(suid) - 1):
                 ancestor = suid[0 : i + 1]
-                if ancestor in self.cell_suids:
-                    self.cell_suids = list(set(self.cell_suids) - set([suid]))
+                if ancestor in self.suids:
+                    self.suids = list(set(self.suids) - set([suid]))
 
     def compress(self):
         # compress
@@ -211,7 +211,7 @@ class CellCollection:
     def _rhealpix_compress(self):
         """Compresses a list of Cell IDs"""
         upper_cells = {}
-        for cell in self.cell_suids:
+        for cell in self.suids:
             upper_cells.setdefault(cell[:-1], []).append(cell)
         compressed_cells = []
         for k, v in upper_cells.items():
@@ -219,7 +219,7 @@ class CellCollection:
                 compressed_cells.append(k)
             else:
                 compressed_cells.extend(v)
-        self.cell_suids = compressed_cells
+        self.suids = compressed_cells
 
     def _rhealpix_order(self):
         """Orders a list of Cell IDs"""
@@ -227,12 +227,12 @@ class CellCollection:
         nums = [
             str(parametrisations[self.crs]["zero_cells"].index(x[0]))
             + "".join([str(i) for i in x[1:]])
-            for x in self.cell_suids
+            for x in self.suids
         ]
         # sort numerical Cell IDs as per integers
         s = sorted(nums, key=int)
         # convert first character back to a letter
-        self.cell_suids = [
+        self.suids = [
             parametrisations[self.crs]["zero_cells"][int(x[0])] + x[1:] for x in s
         ]
 
@@ -256,7 +256,7 @@ class CellCollection:
             )
 
 
-class Cell:
+class Cell(object):
     """
     DGGS Cell class.
     Provides:
@@ -277,15 +277,15 @@ class Cell:
         self.kind = kind
         self.N = parametrisations[crs]["N_sides"]
         if isinstance(suid, str):
-            self.suid = self.suid_from_str(suid)
+            self.suids = self.suid_from_str(suid)
         elif isinstance(suid, tuple):
-            self.suid = suid
+            self.suids = suid
         self.validate()
-        self.resolution = len(self.suid) - 1
+        self.resolution = len(self.suids) - 1
         self.wkt = self.wkt()
 
     def __repr__(self):
-        return "".join([str(i) for i in self.suid])
+        return "".join([str(i) for i in self.suids])
 
     def __add__(self, other: Union[Cell, CellCollection]):
         other = validate_other(other)
@@ -329,13 +329,13 @@ class Cell:
         format_validator()
 
     def _rhealpix_validator(self):
-        if self.suid[0] not in parametrisations[self.crs]["zero_cells"]:
-            raise ValueError("The suid provided does not have a valid zero-cell")
-        if len(self.suid) > 1:
-            for digit in self.suid[1:]:
+        if self.suids[0] not in parametrisations[self.crs]["zero_cells"]:
+            raise ValueError(f"The suid provided ({self.suids}) does not have a valid zero-cell")
+        if len(self.suids) > 1:
+            for digit in self.suids[1:]:
                 if digit not in range(self.N ** 2):
                     raise ValueError(
-                        f"The suid provided ({self.suid}) has digits not in the valid range for this DGGS "
+                        f"The suid provided ({self.suids}) has digits not in the valid range for this DGGS "
                         f"({self.kind} - {self.crs}). "
                         f"Valid range: [0:{(self.N ** 2)-1}]"
                     )
@@ -461,7 +461,7 @@ class Cell:
     def neighbour(self, direction):
         # using code from https://github.com/manaakiwhenua/rhealpixdggs-py
         an = self.atomic_neighbours()
-        suid = self.suid
+        suid = self.suids
         N = self.N
         zero_cells = parametrisations[self.crs]["zero_cells"]
         neighbour_suid = []
@@ -636,7 +636,7 @@ class Cell:
     def overlaps(self, other: Union[str, Cell]) -> bool:
         if isinstance(other, str):
             other = Cell(other)
-        for i, j in zip(self.suid, other.suid):
+        for i, j in zip(self.suids, other.suids):
             if i != j:
                 return False
         return True

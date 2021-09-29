@@ -55,7 +55,7 @@ print(a.neighbours())
 ```
 
 ## Testing
-All tests are in `tests/` and implemented using [unittest](http://docs.python.org/library/unittest.html).
+All tests are in `tests/` and implemented using [pytest](https://docs.pytest.org/en/6.2.x/).
 
 There are individual tests for each of the Cell and CellCollection operations. 
 

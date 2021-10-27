@@ -1,7 +1,7 @@
 # DGGS Classes for Cells and Cell Collections for parametrisations of rHEALPix grids
 
 This library contains classes for representing DGGS Cells and collections of these ("CellCollection") according to parametrisations of the [rHEALPix Discrete Global Grid System](https://iopscience.iop.org/article/10.1088/1755-1315/34/1/012012/pdf).
-This provides a convenient low level API to work with Cells and CellCollections. An example of a library that utilises these objects for higher level geospatial operations is the [rhealpix-sf library](https://github.com/surroundaustralia/rhealpix) which provides a set of Simple Feature relation operations for DGGS Cells.  
+This provides a convenient low level API to work with Cells and CellCollections. An example of a library that utilises these objects for higher level geospatial operations is the [rhealpix-sf library](https://github.com/surroundaustralia/rhealpix-sf) which provides a set of Simple Feature relation operations for DGGS Cells.  
   
 Validation is provided for Cell and CellCollections.
 CellCollections have the following operations performed on instantiation: 
@@ -24,7 +24,9 @@ Cells and CellCollections have the following attributes or methods:
 - children: the set of child Cells for a Cell or CellCollection. Resolution specifiable. 
 
 ## Installation 
-Coming to PyPI.
+Install from PyPi, for example using pip or poetry.  
+
+https://pypi.org/project/rhealpix-geo/  
 
 This package has no dependencies.
 

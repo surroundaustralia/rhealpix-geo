@@ -66,18 +66,18 @@ class CellCollection(object):
         else:
             return "Empty CellCollection"
 
-    def __add__(self, other):
+    def __add__(self, other: Union[Cell, CellCollection], compress=True):
         self._matches(
             other
         )  # TODO pull out as general method - applies to both Cells and CellCollections
         other = validate_other(other)
         new_suids = list(set(self.suids).union(set(other.suids)))
-        return CellCollection(new_suids)
+        return CellCollection(new_suids, compress=compress)
 
     def __eq__(self, other):
         return str(self) == str(other)
 
-    def __sub__(self, other: Union[Cell, CellCollection]):
+    def __sub__(self, other: Union[Cell, CellCollection], compress=True):
 
         global cells_to_retain, cells_to_remove
         cells_to_retain, cells_to_remove = [], []
@@ -97,7 +97,7 @@ class CellCollection(object):
         other = validate_other(other)
         progressively_intersect(self.cells, other.cells)
         overall = list(set(cells_to_retain) - set(cells_to_remove))
-        return CellCollection([Cell(cell) for cell in overall])
+        return CellCollection([Cell(cell) for cell in overall], compress=compress)
 
     def __len__(self):
         """
@@ -138,6 +138,29 @@ class CellCollection(object):
         # return only the neighbours around edges (i.e. we're not interested in neighbours of interior cells that are
         # themselves cells of the CellCollection
         return all_neighbours - self
+
+    def children(self, resolution=None):
+        """
+        Returns the children of the individual cells in a CellCollection, uncompressed.
+        :return: A CellCollection
+        """
+        children = CellCollection()
+        for cell in self.cells:
+            children = children.__add__(cell.children(resolution), compress=False)
+        return children
+
+    def flatten(self, resolution=None):
+        """
+        Returns a CellCollection normalised to a specified level
+        :return: A CellCollection
+        """
+        resolution = resolution if resolution is not None else self.max_resolution
+        if resolution < self.min_resolution:
+            raise ValueError(
+                "Resolution must be at or greater than the CellCollection's minimum resolution in order to "
+                "flatten"
+            )
+        return self.children(resolution)
 
     # def border(self, resolution=None):
     # implement as neighbours of neighbours that overlap with the geometry
@@ -622,16 +645,21 @@ class Cell(object):
 
     def children(self, resolution: int = None) -> list:
         # NB if converted to a "CellCollection", the children will automatically be compressed back to the parent cell!
-        if not resolution:
+        if resolution is None:  # required "is None" else resolution 0 evaluates to False
             resolution_delta = 1
         else:
             resolution_delta = resolution - self.resolution
-        children_tuples = [
-            str(self) + "".join(str(j) for j in i)
-            for i in product(range(self.N ** 2), repeat=resolution_delta)
-        ]
-        children = CellCollection(children_tuples, compress=False)
-        return children
+        if resolution_delta == 0:
+            return self
+        elif resolution_delta < 0:
+            raise ValueError("Resolution for children must be greater than or equal to the cell's resolution")
+        else:
+            children_tuples = [
+                str(self) + "".join(str(j) for j in i)
+                for i in product(range(self.N ** 2), repeat=resolution_delta)
+            ]
+            children = CellCollection(children_tuples, compress=False)
+            return children
 
     def overlaps(self, other: Union[str, Cell]) -> bool:
         if isinstance(other, str):

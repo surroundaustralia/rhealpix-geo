@@ -1,5 +1,6 @@
 from __future__ import annotations
-from itertools import product, chain
+
+from itertools import chain, product
 from typing import Union
 
 parametrisations = {
@@ -353,7 +354,9 @@ class Cell(object):
 
     def _rhealpix_validator(self):
         if self.suids[0] not in parametrisations[self.crs]["zero_cells"]:
-            raise ValueError(f"The suid provided ({self.suids}) does not have a valid zero-cell")
+            raise ValueError(
+                f"The suid provided ({self.suids}) does not have a valid zero-cell"
+            )
         if len(self.suids) > 1:
             for digit in self.suids[1:]:
                 if digit not in range(self.N ** 2):
@@ -472,16 +475,24 @@ class Cell(object):
         :return: a CellCollection of neighbouring cells
         """
         neighbours = []
-        for direction in ("up", "down", "left", "right"):
-            neighbours.append(self.neighbour(direction))
-        if include_diagonals and self.resolution > 0:
-            neighbours.append(self.neighbour("left").neighbour("up"))
-            neighbours.append(self.neighbour("left").neighbour("down"))
-            neighbours.append(self.neighbour("right").neighbour("up"))
-            neighbours.append(self.neighbour("right").neighbour("down"))
+        ln, lr = self.neighbour("left", include_rotation=True)
+        rn, rr = self.neighbour("right", include_rotation=True)
+        un = self.neighbour("up")
+        dn = self.neighbour("down")
+        neighbours.extend([ln, rn, un, dn])
+        if (
+            include_diagonals and self.resolution > 0
+        ):  # no diagonals at resolution 0 as it's a cube
+            for cell, rotation in zip([ln, rn], [lr, rr]):
+                if rotation in [1, 3]:
+                    neighbours.append(cell.neighbour("left"))
+                    neighbours.append(cell.neighbour("right"))
+                else:
+                    neighbours.append(cell.neighbour("up"))
+                    neighbours.append(cell.neighbour("down"))
         return CellCollection(neighbours)
 
-    def neighbour(self, direction):
+    def neighbour(self, direction, include_rotation=False):
         # using code from https://github.com/manaakiwhenua/rhealpixdggs-py
         an = self.atomic_neighbours()
         suid = self.suids
@@ -516,28 +527,36 @@ class Cell(object):
         # then rotate neighbour accordingly.
         self0 = suid[0]
         neighbour0 = neighbour_suid[0]
+        rotation = 0
         if (
             (self0 == zero_cells[5] and neighbour0 == an[self0]["left"])
             or (self0 == an[zero_cells[5]]["right"] and neighbour0 == zero_cells[5])
             or (self0 == zero_cells[0] and neighbour0 == an[self0]["right"])
             or (self0 == an[zero_cells[0]]["left"] and neighbour0 == zero_cells[0])
         ):
-            neighbour = self.rotate(neighbour_suid, 1)
+            rotation = 1
+            # neighbour = self.rotate(neighbour_suid, 1)
         elif (
             (self0 == zero_cells[5] and neighbour0 == an[self0]["down"])
             or (self0 == an[zero_cells[5]]["down"] and neighbour0 == zero_cells[5])
             or (self0 == zero_cells[0] and neighbour0 == an[self0]["up"])
             or (self0 == an[zero_cells[0]]["up"] and neighbour0 == zero_cells[0])
         ):
-            neighbour = self.rotate(neighbour_suid, 2)
+            rotation = 2
+            # neighbour = self.rotate(neighbour_suid, 2)
         elif (
             (self0 == zero_cells[5] and neighbour0 == an[self0]["right"])
             or (self0 == an[zero_cells[5]]["left"] and neighbour0 == zero_cells[5])
             or (self0 == zero_cells[0] and neighbour0 == an[self0]["left"])
             or (self0 == an[zero_cells[0]]["right"] and neighbour0 == zero_cells[0])
         ):
-            neighbour = self.rotate(neighbour_suid, 3)
-        return Cell(tuple(neighbour))
+            rotation = 3
+            # neighbour = self.rotate(neighbour_suid, 3)
+        neighbour = self.rotate(neighbour_suid, rotation)
+        if include_rotation:
+            return Cell(tuple(neighbour)), rotation
+        else:
+            return Cell(tuple(neighbour))
 
     def rotate_entry(self, x, quarter_turns):
         # using code from https://github.com/manaakiwhenua/rhealpixdggs-py
@@ -645,14 +664,18 @@ class Cell(object):
 
     def children(self, resolution: int = None) -> list:
         # NB if converted to a "CellCollection", the children will automatically be compressed back to the parent cell!
-        if resolution is None:  # required "is None" else resolution 0 evaluates to False
+        if (
+            resolution is None
+        ):  # required "is None" else resolution 0 evaluates to False
             resolution_delta = 1
         else:
             resolution_delta = resolution - self.resolution
         if resolution_delta == 0:
             return self
         elif resolution_delta < 0:
-            raise ValueError("Resolution for children must be greater than or equal to the cell's resolution")
+            raise ValueError(
+                "Resolution for children must be greater than or equal to the cell's resolution"
+            )
         else:
             children_tuples = [
                 str(self) + "".join(str(j) for j in i)
